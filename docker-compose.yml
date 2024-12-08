@@ -1,0 +1,43 @@
+x-spark-settings: &spark-settings
+  build: .
+  image: spark-image
+  env_file:
+    - .env.spark
+  volumes:
+    - ./src:/home/ubuntu/src
+    - ./data:/home/ubuntu/data
+    - spark-logs:/opt/spark/spark-events
+  restart: always
+
+services:
+  spark-master:
+    <<: *spark-settings
+    container_name: spark-master
+    entrypoint: ['/opt/spark/entrypoint.sh', 'master']
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080" ]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+    ports:
+      - '8080:8080'
+      - '7077:7077'
+      - '8888:8888'
+
+  spark-history-server:
+    <<: *spark-settings
+    container_name: spark-history
+    entrypoint: ['/opt/spark/entrypoint.sh', 'history']
+    depends_on:
+      - spark-master
+    ports:
+      - '18080:18080'
+
+  spark-worker:
+    <<: *spark-settings
+    entrypoint: ['/opt/spark/entrypoint.sh', 'worker']
+    depends_on:
+      - spark-master
+
+volumes:
+  spark-logs:
